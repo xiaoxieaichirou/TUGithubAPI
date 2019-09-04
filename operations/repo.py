@@ -37,3 +37,37 @@ def create_repo(github, name, org=None, description=None, homepage=None, private
     else:
         result.error = "create repo got {},should be 201".format(str(response.status_code))
     return result
+
+def create_branch(github, owner, repo, new_branch_name, source_branch_name):
+    """
+    在现有repo上创建一个分支，从老分支上拉出一个新分支
+    :param github: github 对象
+    :param owner:  string, owner 名称，可以是github org 名称或当前用户的用户名
+    :param repo:  string, repo 名称
+    :param new_branch_name: 新分支的名称
+    :param source_branch_name: 老分支的名称
+    :return: common item
+    """
+    result = CommonItem()
+    result.success = False
+    result.error = None
+    response = github.gitdata.refs.get_a_reference(owner, repo, source_branch_name)
+    if response.status_code != 200:
+        result.success = False
+        result.error = "get source branch sha fails, repo=s% got %s,should be200" %(repo, str(response.status_code))
+        result.response = response
+        return result
+
+    source_branch_sha = response.content["object"]["sha"]
+
+    payload = {"ref":"refs/heads/%s" %new_branch_name,
+               "sha":source_branch_sha}
+    response = github.gitdata.refs.create_a_reference(owner, repo, json=payload)
+    if response.status_code != 201:
+        result.success = False
+        result.error = "create branch reference fails,repo=%s got %s,should be 201" %(repo, str(response.status_code))
+        result.response = response
+        return result
+    result.success = True
+    result.response = response
+    return result
